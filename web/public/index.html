@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="수도권 도시철도 시간표 기반 경로 API 사용 문서와 JSON 응답 명세">
+  <title>Metro Transit API — 개발자 문서</title>
+  <link rel="stylesheet" href="/api-docs.css?v=20260823-3">
+  <script src="/api-docs.js?v=20260823-2" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#content">본문으로 건너뛰기</a>
+  <header class="docs-header">
+    <a class="docs-brand" href="/" aria-label="Metro Transit API 문서 홈">
+      <span class="brand-symbol" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span><b>METRO TRANSIT</b><small>API REFERENCE</small></span>
+    </a>
+    <nav aria-label="문서 메뉴">
+      <a href="#quickstart">빠른 시작</a>
+      <a href="#station-lookup">역 검색</a>
+      <a href="#nearby-stations">주변 역</a>
+      <a href="#odsay-path">경로 조회</a>
+      <a href="#data-status">수집·운영</a>
+      <a href="#errors">오류</a>
+    </nav>
+    <a class="header-link" href="/docs" target="_blank" rel="noreferrer">OpenAPI UI <span>↗</span></a>
+  </header>
+
+  <div class="docs-layout">
+    <aside class="sidebar" aria-label="페이지 목차">
+      <p>ON THIS PAGE</p>
+      <a href="#overview">개요</a>
+      <a href="#quickstart">빠른 시작</a>
+      <a href="#authentication">인증과 호출 정책</a>
+      <a href="#station-lookup">등록 역 검색</a>
+      <a href="#nearby-stations">좌표 기반 주변 역</a>
+      <a href="#odsay-path">ODsay 호환 경로</a>
+      <a href="#parameters">요청 파라미터</a>
+      <a href="#response">응답 필드</a>
+      <a href="#mapping">구간 매핑</a>
+      <a href="#limitations">호환 범위</a>
+      <a href="#native-api">네이티브 경로</a>
+      <a href="#supporting-api">보조 API</a>
+      <a href="#data-status">수집원과 운영</a>
+      <a href="#admin-api">관리 API</a>
+      <a href="#errors">오류 처리</a>
+    </aside>
+
+    <main id="content">
+      <section class="docs-hero" id="overview">
+        <p class="overline">SEOUL METROPOLITAN RAIL / JSON API</p>
+        <h1>시간표와 환승을<br><em>계산 가능한 데이터로.</em></h1>
+        <p class="hero-lead">활성 정적 시간표, 열차별 출발·도착 시각, 역별 환승 보행시간과 다음 열차 대기를 반영해 수도권 도시철도 경로를 반환합니다.</p>
+        <div class="base-url-card">
+          <span>BASE URL</span>
+          <code data-base-url>http://localhost:8080</code>
+          <button type="button" class="copy-button" data-copy-selector="[data-base-url]">복사</button>
+        </div>
+        <div class="hero-links">
+          <a href="/docs" target="_blank" rel="noreferrer">Swagger UI</a>
+          <a href="/redoc" target="_blank" rel="noreferrer">ReDoc</a>
+          <a href="/openapi.json" target="_blank" rel="noreferrer">OpenAPI JSON</a>
+          <a href="/health" target="_blank" rel="noreferrer">상태 확인</a>
+        </div>
+      </section>
+
+      <section class="doc-section" id="quickstart">
+        <div class="section-title"><span>01</span><div><p>QUICK START</p><h2>첫 번째 경로 요청</h2></div></div>
+        <p>ODsay v1.8 도시 내 길찾기와 같은 <code>result.path[].info/subPath[]</code> 구조가 필요하면 아래 엔드포인트를 사용합니다. 출발역과 도착역은 부분 검색어가 아닌 확정된 역명이어야 합니다.</p>
+        <div class="endpoint-line"><b>GET</b><code>/odsay/v1/api/searchPubTransPathT</code></div>
+        <div class="code-card">
+          <div class="code-head"><span>cURL</span><button type="button" class="copy-button" data-copy-target="curl-example">복사</button></div>
+          <pre><code id="curl-example">curl --get '<span data-base-url>http://localhost:8080</span>/odsay/v1/api/searchPubTransPathT' \
+  -H 'X-API-Key: &lt;발급받은_API_키&gt;' \
+  --data-urlencode 'origin=강남역' \
+  --data-urlencode 'destination=서울역' \
+  --data-urlencode 'departure_at=2026-08-23T09:00:00+09:00' \
+  --data-urlencode 'walking_mode=standard'</code></pre>
+        </div>
+        <div class="callouts two-column">
+          <article><b>역명 형식</b><p><code>강남</code>과 <code>강남역</code>은 모두 허용합니다. <code>강</code> 같은 부분 이름이나 <code>강남역 2호선</code>처럼 노선이 붙은 값은 허용하지 않습니다.</p></article>
+          <article><b>서울 시간대</b><p>시간대가 없는 값은 <code>Asia/Seoul</code>로 처리합니다. 가능하면 <code>+09:00</code>을 포함하세요.</p></article>
+        </div>
+      </section>
+
+      <section class="doc-section" id="authentication">
+        <div class="section-title"><span>02</span><div><p>ACCESS</p><h2>인증과 호출 정책</h2></div></div>
+        <div class="spec-grid">
+          <div><span>경로 계산 API</span><b><code>X-API-Key</code></b><p>ODsay 호환 경로와 네이티브 소요시간 API는 발급된 소비자 키가 필요합니다.</p></div>
+          <div><span>관리 API</span><b><code>X-Admin-API-Key</code></b><p>동기화 실행 요청에만 서버 관리 키가 필요합니다.</p></div>
+          <div><span>외부 공공데이터 키</span><b>서버 내부 전용</b><p>수집용 키는 소비자 요청에 전달하지 않으며 응답에도 노출하지 않습니다.</p></div>
+          <div><span>읽기 전용 조회</span><b>인증 불필요</b><p>역·노선·수집원·운영 상태 조회는 문서와 운영 화면을 위해 공개합니다.</p></div>
+        </div>
+        <p class="notice"><b>키 전달 방법:</b> <code>X-API-Key</code> 요청 헤더를 권장합니다. ODsay 방식이 필요한 클라이언트는 <code>?apiKey=발급키</code> 쿼리도 사용할 수 있지만 URL과 로그에 키가 남을 수 있습니다.</p>
+      </section>
+
+      <section class="doc-section" id="station-lookup">
+        <div class="section-title"><span>03</span><div><p>STATION LOOKUP</p><h2>API에서 사용할 역 찾기</h2></div></div>
+        <p>한 글자부터 현재 DB에 등록된 역을 검색할 수 있습니다. 검색 결과에 표시되는 한글 역명을 <code>origin</code> 또는 <code>destination</code>에 사용하세요. 첫 글자가 일치하는 역을 먼저, 이름 중간에 검색어가 포함된 역을 다음에 보여줍니다.</p>
+        <form class="docs-station-search" id="docs-station-search">
+          <label for="docs-station-query">역 이름</label>
+          <div><input id="docs-station-query" name="q" type="search" placeholder="예: 강, 서울역, 어룡" autocomplete="off"><button type="submit">등록 역 검색</button></div>
+        </form>
+        <div class="station-rule-strip">
+          <span><b>경로 요청 가능</b><code>강남</code> <code>강남역</code></span>
+          <span><b>검색만 가능</b><code>강</code> <code>남</code></span>
+          <span><b>권장</b>검색 결과의 <code>name_ko</code> 그대로 사용</span>
+        </div>
+        <div class="docs-station-results" id="docs-station-results" aria-live="polite"><p class="docs-empty">검색어를 입력하면 역명, 영문명, 노선과 역 코드를 확인할 수 있습니다.</p></div>
+      </section>
+
+      <section class="doc-section" id="nearby-stations">
+        <div class="section-title"><span>04</span><div><p>NEARBY STATIONS</p><h2>위도·경도로 가까운 역 찾기</h2></div></div>
+        <p>WGS84 좌표와 검색 반경을 전달하면 직선거리가 가까운 순서로 수도권 도시철도역을 반환합니다. ODsay 호환 응답과 거리까지 포함하는 네이티브 응답을 각각 제공합니다.</p>
+
+        <h3>ODsay <code>pointSearch</code> 호환 요청</h3>
+        <div class="endpoint-line"><b>GET</b><code>/odsay/v1/api/pointSearch</code></div>
+        <div class="code-card">
+          <div class="code-head"><span>cURL · 강남역 주변 1km</span><button type="button" class="copy-button" data-copy-target="point-search-example">복사</button></div>
+          <pre><code id="point-search-example">curl --get '<span data-base-url>http://localhost:8080</span>/odsay/v1/api/pointSearch' \
+  -H 'X-API-Key: &lt;발급받은_API_키&gt;' \
+  --data-urlencode 'x=127.0276' \
+  --data-urlencode 'y=37.4979' \
+  --data-urlencode 'radius=1000' \
+  --data-urlencode 'stationClass=2'</code></pre>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>이름</th><th>형식</th><th>필수</th><th>기본값</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>x</code></td><td>double</td><td><span class="required">Y</span></td><td>—</td><td>경도(longitude). 서울권에서는 보통 <code>126~128</code> 범위입니다.</td></tr>
+              <tr><td><code>y</code></td><td>double</td><td><span class="required">Y</span></td><td>—</td><td>위도(latitude). 서울권에서는 보통 <code>37</code>대입니다.</td></tr>
+              <tr><td><code>radius</code></td><td>integer</td><td>N</td><td>250</td><td>미터 단위 반경. 1~20,000.</td></tr>
+              <tr><td><code>stationClass</code></td><td>string</td><td>N</td><td><code>2</code></td><td>현재 <code>2</code>(지하철역)만 지원합니다.</td></tr>
+              <tr><td><code>lang</code></td><td>integer</td><td>N</td><td><code>0</code></td><td>현재 국문(<code>0</code>)만 지원합니다.</td></tr>
+              <tr><td><code>output</code></td><td>string</td><td>N</td><td><code>json</code></td><td>JSON만 지원합니다.</td></tr>
+              <tr><td><code>apiKey</code></td><td>string</td><td>조건부</td><td>—</td><td><code>X-API-Key</code> 헤더를 사용할 수 없을 때 쿼리로 전달합니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="notice"><b>좌표 순서 주의:</b> <code>x=경도</code>, <code>y=위도</code>입니다. 두 값을 바꾸면 검색 결과가 없거나 전혀 다른 지역을 조회하게 됩니다.</p>
+
+        <h3>ODsay 호환 응답 예시</h3>
+        <div class="code-card">
+          <div class="code-head"><span>200 OK · 노선별 역 항목</span><button type="button" class="copy-button" data-copy-target="point-search-response">복사</button></div>
+          <pre><code id="point-search-response">{
+  "result": {
+    "count": 2,
+    "station": [
+      {
+        "stationClass": 2,
+        "stationName": "강남",
+        "stationID": 2126536365,
+        "type": 2,
+        "laneName": "서울 2호선",
+        "laneCity": "수도권",
+        "x": 127.02795,
+        "y": 37.49805,
+        "arsID": "",
+        "ebid": "",
+        "nonstopStation": 0
+      },
+      {
+        "stationClass": 2,
+        "stationName": "강남",
+        "stationID": 1306444089,
+        "type": 109,
+        "laneName": "신분당선",
+        "laneCity": "수도권",
+        "x": 127.027879,
+        "y": 37.497385,
+        "arsID": "",
+        "ebid": "",
+        "nonstopStation": 0
+      }
+    ]
+  }
+}</code></pre>
+        </div>
+        <p class="notice"><b>브라우저 직접 호출:</b> 헤더를 설정할 수 없다면 <code>/odsay/v1/api/pointSearch?apiKey=&lt;발급키&gt;&amp;x=127.0276&amp;y=37.4979&amp;radius=1000&amp;stationClass=2</code>처럼 호출할 수 있습니다. 운영 환경에서는 URL 로그에 키가 남지 않도록 <code>X-API-Key</code> 헤더를 권장합니다.</p>
+
+        <h3>ODsay <code>pointSearch</code> 지원 비교</h3>
+        <p>아래 표는 <a href="https://lab.odsay.com/guide/releaseReference?platform=web" target="_blank" rel="noreferrer">ODsay 공식 Web API 레퍼런스</a>를 기준으로 작성했습니다. <span class="support-badge unsupported">제공되지 않음</span> 항목은 ODsay 규격에는 있지만 이 API에서는 사용할 수 없습니다. 호환이라는 표현은 지원 필드의 JSON 배치가 같다는 뜻이며, ODsay 데이터나 고유 식별자를 제공한다는 뜻이 아닙니다.</p>
+        <div class="table-wrap">
+          <table class="support-table">
+            <thead><tr><th>기능·필드</th><th>ODsay</th><th>이 API</th><th>지원 상태</th></tr></thead>
+            <tbody>
+              <tr><td><code>GET/POST pointSearch</code></td><td>지원</td><td>동일 경로 구조로 지원</td><td><span class="support-badge supported">동일 지원</span></td></tr>
+              <tr><td><code>x</code> 경도 / <code>y</code> 위도</td><td>WGS84 좌표</td><td>WGS84 좌표</td><td><span class="support-badge supported">동일 지원</span></td></tr>
+              <tr><td><code>radius</code></td><td>기본 250m</td><td>기본 250m, 최대 20km</td><td><span class="support-badge partial">부분 지원</span></td></tr>
+              <tr><td><code>stationClass=2</code></td><td>지하철역</td><td>지하철역</td><td><span class="support-badge supported">동일 지원</span></td></tr>
+              <tr class="unsupported-row"><td><code>stationClass=1</code></td><td>버스정류장</td><td>버스정류장 데이터 없음</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr class="unsupported-row"><td><code>stationClass=3~7</code></td><td>기차역·터미널·공항·항만(7은 ODsay 문서상 업데이트 예정)</td><td>도시철도역 외 POI 데이터 없음</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr class="unsupported-row"><td>다중 클래스 <code>1:2</code></td><td>버스+지하철 동시 조회</td><td><code>stationClass=2</code>만 허용</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr class="unsupported-row"><td><code>lang=1~5</code></td><td>영문·일문·중문·베트남어</td><td><code>lang=0</code> 국문만 허용</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr class="unsupported-row"><td><code>output=xml</code></td><td>XML 응답</td><td><code>json</code>만 허용</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr><td><code>result.count/station[]</code></td><td>POI 목록</td><td>지하철역 목록</td><td><span class="support-badge partial">지하철만 지원</span></td></tr>
+              <tr><td><code>stationID</code></td><td>ODsay 고유 ID</td><td>플랫폼 로컬 정수 ID</td><td><span class="support-badge partial">값 체계 다름</span></td></tr>
+              <tr><td><code>type/laneName/laneCity/x/y</code></td><td>노선·지역·좌표</td><td>같은 필드명으로 제공</td><td><span class="support-badge supported">동일 지원</span></td></tr>
+              <tr class="unsupported-row"><td>다국어 이름 필드</td><td><code>stationNameKor</code> 등</td><td>호환 응답에서 별도 다국어 필드 없음</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr class="unsupported-row"><td><code>arsID/ebid</code></td><td>버스정류장 식별자</td><td>지하철 결과에서는 빈 문자열</td><td><span class="support-badge unsupported">제공되지 않음</span></td></tr>
+              <tr><td>거리값</td><td>호환 응답에 별도 필드 없음</td><td>호환 응답에는 없음, 네이티브 API에 <code>distance_m</code></td><td><span class="support-badge partial">자체 API 확장</span></td></tr>
+              <tr><td>데이터 원천</td><td>ODsay 자체 데이터</td><td>국가철도공단 공개 좌표</td><td><span class="support-badge partial">결과 차이 가능</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="unsupported-notice" role="note">
+          <b>빨간색 항목은 제공되지 않습니다.</b>
+          <p>버스정류장, 기차역·터미널·공항·항만, 다국어 응답, XML 출력, ODsay 고유 <code>stationID</code>는 사용할 수 없습니다. 요청하면 HTTP 400과 오류 코드 <code>-8</code>을 반환합니다.</p>
+        </div>
+
+        <h3>거리 포함 네이티브 요청</h3>
+        <div class="endpoint-line"><b>GET</b><code>/api/v1/stations/nearby</code></div>
+        <div class="code-card">
+          <div class="code-head"><span>HTTP GET</span><button type="button" class="copy-button" data-copy-target="native-nearby-example">복사</button></div>
+          <pre><code id="native-nearby-example"><span data-base-url>http://localhost:8080</span>/api/v1/stations/nearby?apiKey=&lt;발급키&gt;&amp;latitude=37.4979&amp;longitude=127.0276&amp;radius_m=1000&amp;limit=10</code></pre>
+        </div>
+        <p>네이티브 응답은 같은 이름의 환승역을 하나로 묶고 <code>distance_m</code>, <code>lines[]</code>, 좌표 수집원과 데이터 기준일을 반환합니다. ODsay 호환 응답은 공식 필드 구조에 맞춰 노선별 역 항목을 반환하며 별도 거리 필드를 추가하지 않습니다.</p>
+        <div class="code-card compact">
+          <div class="code-head"><span>네이티브 응답 · 축약 예시</span><button type="button" class="copy-button" data-copy-target="native-nearby-response">복사</button></div>
+          <pre><code id="native-nearby-response">{
+  "count": 1,
+  "stations": [{
+    "name_ko": "강남",
+    "distance_m": 83,
+    "latitude": 37.4973854,
+    "longitude": 127.0278789,
+    "lines": [
+      { "line_code": "SEOUL_2", "line_name": "서울 2호선" },
+      { "line_code": "SHINBUNDANG", "line_name": "신분당선" }
+    ],
+    "coordinate_source_code": "KRIC_STATION_COORDINATES",
+    "coordinate_basis_date": "2026-06-18"
+  }]
+}</code></pre>
+        </div>
+      </section>
+
+      <section class="doc-section" id="odsay-path">
+        <div class="section-title"><span>05</span><div><p>PRIMARY ENDPOINT</p><h2>ODsay v1.8 호환 경로 조회</h2></div></div>
+        <p>GET과 POST를 지원합니다. 두 방식 모두 파라미터는 쿼리 문자열로 전달합니다. 현재는 버스가 없는 도시철도 경로 한 건을 반환하며, 계산 기준은 요청 시각 이후 가장 빨리 도착하는 경로입니다.</p>
+
+        <h3>역명 입력 규칙</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>입력 예시</th><th>사용 가능</th><th>처리 방식</th></tr></thead>
+            <tbody>
+              <tr><td><code>강남</code>, <code>강남역</code></td><td><span class="allowed">가능</span></td><td>마지막 <code>역</code>은 선택 사항이며 두 값은 같은 역으로 처리합니다.</td></tr>
+              <tr><td><code>서울</code>, <code>서울역</code></td><td><span class="allowed">가능</span></td><td>DB의 확정 역명과 일치하므로 모두 허용합니다.</td></tr>
+              <tr><td><code>어룡(용현산업단지)</code></td><td><span class="allowed">가능</span></td><td>괄호가 포함된 공식 역명은 검색 결과의 전체 이름을 전달합니다.</td></tr>
+              <tr><td><code>강</code>, <code>남</code></td><td><span class="rejected">불가</span></td><td>역 검색에는 사용할 수 있지만 경로 요청은 정확히 한 역을 지정해야 합니다.</td></tr>
+              <tr><td><code>강남역 2호선</code>, <code>222</code></td><td><span class="rejected">불가</span></td><td>노선명과 역 코드는 붙이지 않습니다. 역명만 전달합니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="parameters">요청 파라미터</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>이름</th><th>형식</th><th>필수</th><th>기본값</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>origin</code></td><td>string</td><td><span class="required">Y</span></td><td>—</td><td>확정된 출발역명. 앞뒤·중간 공백은 제거되며 마지막 <code>역</code>은 선택 사항입니다.</td></tr>
+              <tr><td><code>destination</code></td><td>string</td><td><span class="required">Y</span></td><td>—</td><td>확정된 도착역명. 부분 이름, 노선명, 역 코드는 사용할 수 없습니다.</td></tr>
+              <tr><td><code>departure_at</code></td><td>ISO 8601</td><td>N</td><td>현재 시각</td><td>경로 탐색 기준 시각. 예: <code>2026-08-24T09:00:00+09:00</code></td></tr>
+              <tr><td><code>walking_mode</code></td><td>enum</td><td>N</td><td><code>standard</code></td><td><code>standard</code>, <code>slow</code>, <code>accessible</code></td></tr>
+              <tr><td><code>transfer_seconds</code></td><td>integer</td><td>N</td><td>300</td><td>역별 공식 환승값이 없을 때 쓰는 기본 보행시간. 0~1800초.</td></tr>
+              <tr><td><code>transfer_buffer_seconds</code></td><td>integer</td><td>N</td><td>30</td><td>환승 보행 후 다음 열차 탑승 전 안전 여유. 0~600초.</td></tr>
+              <tr><td><code>output</code></td><td>enum</td><td>N</td><td><code>json</code></td><td><code>json</code>만 허용합니다.</td></tr>
+              <tr><td><code>apiKey</code></td><td>string</td><td>조건부</td><td>—</td><td><code>X-API-Key</code> 헤더를 쓰지 못할 때만 사용하는 소비자 키입니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callouts three-column">
+          <article><b>영업일 경계</b><p>자정부터 02:59:59까지는 전날 영업일로 계산하며 내부 시각은 24시 이후 값으로 이어집니다.</p></article>
+          <article><b>탐색 범위</b><p>요청 출발시각 이후 6시간 안에 출발하는 활성 열차를 대상으로 경로를 찾습니다.</p></article>
+          <article><b>분 단위 반올림</b><p>ODsay 호환 응답의 시간 필드는 초 단위 계산 결과를 올림한 정수 분입니다.</p></article>
+        </div>
+
+        <h3>URL 직접 호출</h3>
+        <div class="code-card">
+          <div class="code-head"><span>브라우저 / HTTP GET</span><button type="button" class="copy-button" data-copy-target="url-example">복사</button></div>
+          <pre><code id="url-example"><span data-base-url>http://localhost:8080</span>/odsay/v1/api/searchPubTransPathT?apiKey=&lt;발급키&gt;&amp;origin=강남&amp;destination=서울역&amp;departure_at=2026-08-23T09:00:00%2B09:00</code></pre>
+        </div>
+        <p class="notice"><b>URL 인코딩:</b> 쿼리 문자열에 시간대의 <code>+</code>를 직접 넣으면 공백으로 해석될 수 있으므로 <code>%2B09:00</code>으로 인코딩하거나 URL 인코더를 사용하세요.</p>
+
+        <h3>JavaScript 호출</h3>
+        <div class="code-card">
+          <div class="code-head"><span>JavaScript</span><button type="button" class="copy-button" data-copy-target="js-example">복사</button></div>
+          <pre><code id="js-example">const params = new URLSearchParams({
+  origin: '강남역',
+  destination: '서울역',
+  departure_at: '2026-08-23T09:00:00+09:00',
+  walking_mode: 'standard',
+});
+
+const response = await fetch(
+  `/odsay/v1/api/searchPubTransPathT?${params}`,
+  { headers: { 'X-API-Key': '&lt;발급받은_API_키&gt;' } },
+);
+const payload = await response.json();
+
+if (!response.ok) throw new Error(payload.error?.message ?? '경로 조회 실패');
+console.log(payload.result.path[0].info.totalTime);</code></pre>
+        </div>
+
+        <h3>Python 호출</h3>
+        <div class="code-card">
+          <div class="code-head"><span>Python · requests</span><button type="button" class="copy-button" data-copy-target="python-example">복사</button></div>
+          <pre><code id="python-example">import requests
+
+response = requests.get(
+    "<span data-base-url>http://localhost:8080</span>/odsay/v1/api/searchPubTransPathT",
+    headers={"X-API-Key": "&lt;발급받은_API_키&gt;"},
+    params={
+        "origin": "강남",
+        "destination": "서울역",
+        "departure_at": "2026-08-23T09:00:00+09:00",
+        "walking_mode": "standard",
+    },
+    timeout=30,
+)
+response.raise_for_status()
+print(response.json()["result"]["path"][0]["info"])</code></pre>
+        </div>
+
+        <h3>POST 호출</h3>
+        <div class="code-card">
+          <div class="code-head"><span>cURL · POST, 파라미터는 쿼리 문자열</span><button type="button" class="copy-button" data-copy-target="post-example">복사</button></div>
+          <pre><code id="post-example">curl -X POST --get '<span data-base-url>http://localhost:8080</span>/odsay/v1/api/searchPubTransPathT' \
+  -H 'X-API-Key: &lt;발급받은_API_키&gt;' \
+  --data-urlencode 'origin=북한산우이역' \
+  --data-urlencode 'destination=신설동역' \
+  --data-urlencode 'departure_at=2026-08-23T10:00:00+09:00'</code></pre>
+        </div>
+      </section>
+
+      <section class="doc-section" id="response">
+        <div class="section-title"><span>06</span><div><p>RESPONSE</p><h2>JSON 응답 명세</h2></div></div>
+        <div class="code-card response-card">
+          <div class="code-head"><span>200 OK · 축약 예시</span><button type="button" class="copy-button" data-copy-target="response-example">복사</button></div>
+          <pre><code id="response-example">{
+  "result": {
+    "searchType": 0,
+    "busCount": 0,
+    "subwayCount": 1,
+    "path": [{
+      "pathType": 1,
+      "info": {
+        "totalTime": 7,
+        "payment": null,
+        "subwayTransitCount": 0,
+        "firstStartStation": "삼성",
+        "lastEndStation": "강남",
+        "subwayStationCount": 3,
+        "totalIntervalTime": 2
+      },
+      "subPath": [
+        { "trafficType": 3, "distance": 0, "sectionTime": 0 },
+        {
+          "trafficType": 1,
+          "sectionTime": 6,
+          "stationCount": 3,
+          "lane": [{
+            "name": "서울 2호선",
+            "subwayCode": 2,
+            "subwayCityCode": 1000
+          }],
+          "startName": "삼성",
+          "endName": "강남",
+          "way": "성수",
+          "passStopList": { "stations": [] }
+        }
+      ]
+    }]
+  }
+}</code></pre>
+        </div>
+
+        <h3>상위 및 요약 필드</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>JSON 경로</th><th>형식</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>result.searchType</code></td><td>integer</td><td><code>0</code>: 도시 내 경로</td></tr>
+              <tr><td><code>result.subwayCount</code></td><td>integer</td><td>반환된 지하철 경로 개수. 현재 성공 시 1.</td></tr>
+              <tr><td><code>path[].pathType</code></td><td>integer</td><td><code>1</code>: 지하철 경로</td></tr>
+              <tr><td><code>info.totalTime</code></td><td>integer</td><td>요청 시각부터 도착까지 총 분. 최초 열차 대기 포함.</td></tr>
+              <tr><td><code>info.subwayTransitCount</code></td><td>integer</td><td>지하철 환승 횟수.</td></tr>
+              <tr><td><code>info.totalStationCount</code></td><td>integer</td><td>모든 승차 구간의 이동 역 수 합계.</td></tr>
+              <tr><td><code>info.totalIntervalTime</code></td><td>integer</td><td>최초 열차와 환승 열차 대기시간 합계(분).</td></tr>
+              <tr><td><code>info.totalWalk</code></td><td>integer</td><td>환승 보행 거리 추정치(미터).</td></tr>
+              <tr><td><code>info.payment</code></td><td>null</td><td>운임 계산 미지원. 무료를 의미하는 0을 반환하지 않습니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="mapping">이동 구간 <code>subPath[]</code></h3>
+        <div class="callouts three-column">
+          <article><span class="type-chip rail">1</span><b>지하철</b><p>노선, 방향, 승하차역, 정차역 목록과 구간 소요시간을 포함합니다.</p></article>
+          <article><span class="type-chip bus">2</span><b>버스</b><p>ODsay 규격에 존재하지만 현재 플랫폼은 반환하지 않습니다.</p></article>
+          <article><span class="type-chip walk">3</span><b>도보</b><p>출입 및 환승 보행 구간입니다. 환승 여유시간은 구간 시간에 포함됩니다.</p></article>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>필드</th><th>적용 구간</th><th>설명</th></tr></thead>
+            <tbody>
+              <tr><td><code>trafficType</code></td><td>전체</td><td>1 지하철, 2 버스, 3 도보.</td></tr>
+              <tr><td><code>distance</code></td><td>전체</td><td>미터 단위 거리. 좌표 미확보 시 열차 구간은 0일 수 있습니다.</td></tr>
+              <tr><td><code>sectionTime</code></td><td>전체</td><td>해당 구간 소요시간(분).</td></tr>
+              <tr><td><code>stationCount</code></td><td>지하철</td><td>승차역 다음부터 하차역까지 이동하는 역 구간 수.</td></tr>
+              <tr><td><code>lane[]</code></td><td>지하철</td><td>노선명, ODsay 호환 노선 타입, 도시코드.</td></tr>
+              <tr><td><code>intervalTime</code></td><td>지하철</td><td>해당 열차 탑승 전 실제 대기시간(분).</td></tr>
+              <tr><td><code>startName/endName</code></td><td>지하철</td><td>승차역과 하차역 이름.</td></tr>
+              <tr><td><code>startX/startY/endX/endY</code></td><td>지하철</td><td>경도·위도. 데이터 미확보 시 <code>null</code>.</td></tr>
+              <tr><td><code>way/wayCode</code></td><td>지하철</td><td>행선지 또는 운행 방향과 상·하행 코드.</td></tr>
+              <tr><td><code>door</code></td><td>지하철</td><td>빠른 환승 위치. 미확보 상태는 <code>-2--2</code>.</td></tr>
+              <tr><td><code>startID/endID</code></td><td>지하철</td><td>플랫폼이 생성한 로컬 정수 역 식별자.</td></tr>
+              <tr><td><code>passStopList.stations[]</code></td><td>지하철</td><td>순번, 로컬 역 ID, 역명과 좌표를 포함하는 전체 정차역 목록.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="notice"><b>시간 계산:</b> 총 소요시간 = 최초 열차 대기 + 열차 이동 + 환승 보행 + 환승 여유 + 환승 열차 대기입니다. 다음 열차가 환승 준비 완료 시각보다 빠르면 탑승 가능한 그다음 열차를 선택합니다.</p>
+      </section>
+
+      <section class="doc-section" id="limitations">
+        <div class="section-title"><span>07</span><div><p>COMPATIBILITY</p><h2>ODsay 호환 범위</h2></div></div>
+        <p>필드 배치와 지하철 노선 타입은 ODsay v1.8 도시 내 응답을 따르지만, 이 서비스가 ODsay의 데이터나 고유 식별자를 재배포하는 것은 아닙니다.</p>
+        <div class="compat-list">
+          <div><b><code>stationID</code></b><p>정수 형태의 플랫폼 로컬 식별자입니다. ODsay 역 ID와 교환해 사용할 수 없습니다.</p></div>
+          <div><b><code>subwayCode</code></b><p>ODsay 공식 노선 타입과 같은 코드값을 사용합니다. 미등록 신규 노선은 0입니다.</p></div>
+          <div><b>좌표와 거리</b><p>국가철도공단 공식 역 좌표를 사용합니다. 공급 원본의 비정상 좌표 또는 미매칭 역은 좌표·직선거리가 <code>null</code>일 수 있습니다.</p></div>
+          <div><b><code>mapObj</code> / <code>door</code></b><p>ODsay 지도 보간점은 제공하지 않습니다. 빠른 환승 객차 미확보 시 <code>-2--2</code>입니다.</p></div>
+          <div><b>경로 개수</b><p>현재는 요청 시각 기준 가장 빠른 도착 경로 한 건만 제공합니다.</p></div>
+          <div><b>실시간성</b><p>활성 정적 시간표 기준입니다. 당일 지연·운휴가 반영되지 않을 수 있습니다.</p></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="native-api">
+        <div class="section-title"><span>08</span><div><p>NATIVE ROUTE</p><h2>상세 시간표 경로 API</h2></div></div>
+        <p>열차별 출발·도착 시각, 환승 준비 완료 시각과 보행·대기시간을 모두 사용하려면 네이티브 응답을 선택합니다. 요청 파라미터는 ODsay 호환 경로 API와 같습니다.</p>
+        <div class="endpoint-line"><b>GET</b><code>/api/v1/travel-time</code></div>
+        <div class="field-cards">
+          <div><code>departure_at</code><span>실제 첫 열차 출발시각</span></div>
+          <div><code>arrival_at</code><span>최종 도착시각</span></div>
+          <div><code>duration_minutes</code><span>총 소요시간</span></div>
+          <div><code>transfer_count</code><span>환승 횟수</span></div>
+          <div><code>initial_wait_seconds</code><span>첫 열차 대기</span></div>
+          <div><code>in_vehicle_seconds</code><span>열차 내 이동</span></div>
+          <div><code>transfer_walk_seconds</code><span>환승 보행</span></div>
+          <div><code>transfer_wait_seconds</code><span>환승 열차 대기</span></div>
+          <div><code>legs[]</code><span>승차·환승 상세 구간</span></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="supporting-api">
+        <div class="section-title"><span>09</span><div><p>READ ENDPOINTS</p><h2>보조 조회 API</h2></div></div>
+        <div class="endpoint-list">
+          <article><b>GET</b><code>/health</code><p>API와 데이터베이스 연결 상태.</p></article>
+          <article><b>GET</b><code>/api/v1/stats</code><p>노선·역·수집원·시간표 통계.</p></article>
+          <article><b>GET</b><code>/api/v1/lines</code><p>활성 노선과 운영기관 목록.</p></article>
+          <article><b>GET</b><code>/api/v1/stations?q={역명}&amp;limit=100&amp;offset=0</code><p>한 글자부터 역을 부분 검색합니다. 결과의 <code>name_ko</code>를 경로 API 역명으로 사용할 수 있습니다.</p></article>
+          <article><b>GET</b><code>/api/v1/stations/nearby?latitude={위도}&amp;longitude={경도}</code><p>반경 내 가까운 역을 거리순으로 조회합니다. 소비자 API 키가 필요합니다.</p></article>
+          <article><b>GET</b><code>/api/v1/stations/{station_id}/timetable?service_date=YYYY-MM-DD</code><p>역 UUID 기준 활성 시간표.</p></article>
+          <article><b>GET</b><code>/api/v1/service-alerts</code><p>현재 활성 운행 알림.</p></article>
+          <article><b>GET</b><code>/api/v1/sources/coverage</code><p>공식 수집원별 확보·접근·라이선스 상태.</p></article>
+          <article><b>GET</b><code>/api/v1/api-usage</code><p>외부 공급자 API의 일일 요청 예산과 사용량.</p></article>
+          <article><b>GET</b><code>/api/v1/sync/jobs?limit=100</code><p>최근 수집 작업 결과.</p></article>
+        </div>
+      </section>
+
+      <section class="doc-section" id="data-status">
+        <div class="section-title"><span>10</span><div><p>LIVE DATA STATUS</p><h2>수집원과 운영 현황</h2></div></div>
+        <p>수집원 접근 상태, 최근 동기화, 운행 알림과 외부 API 요청 예산을 현재 서버 기준으로 표시합니다.</p>
+        <div class="docs-live-toolbar">
+          <span class="docs-system-state" id="docs-system-state"><i></i><b>연결 확인 중</b></span>
+          <span id="docs-updated-at">마지막 화면 갱신 —</span>
+          <button type="button" id="docs-refresh-status">새로고침</button>
+        </div>
+
+        <h3>공식 수집원 현황</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>수집원</th><th>종류</th><th>확보 범위</th><th>접근 상태</th><th>이용조건</th></tr></thead>
+            <tbody id="docs-coverage-body"><tr><td colspan="5">수집원 정보를 불러오는 중입니다.</td></tr></tbody>
+          </table>
+        </div>
+
+        <h3>동기화와 운행 알림</h3>
+        <div class="docs-operations-grid">
+          <article><h4>최근 동기화 작업</h4><div id="docs-jobs-list"><p class="docs-empty">작업 기록을 불러오는 중입니다.</p></div></article>
+          <article><h4>현재 운행 알림</h4><div id="docs-alerts-list"><p class="docs-empty">알림을 불러오는 중입니다.</p></div></article>
+          <article><h4>오늘의 API 호출 예산</h4><div id="docs-api-usage-list"><p class="docs-empty">호출량을 불러오는 중입니다.</p></div></article>
+        </div>
+      </section>
+
+      <section class="doc-section" id="admin-api">
+        <div class="section-title"><span>11</span><div><p>ADMINISTRATION</p><h2>수동 동기화 요청</h2></div></div>
+        <p>관리자 전용입니다. 키는 URL이나 본문이 아니라 요청 헤더로 전달합니다. 응답은 작업 완료가 아닌 큐 등록을 뜻하는 <code>202 Accepted</code>입니다.</p>
+        <div class="endpoint-line admin"><b>POST</b><code>/api/v1/admin/sync/{source_code}</code></div>
+        <div class="code-card">
+          <div class="code-head"><span>cURL</span><button type="button" class="copy-button" data-copy-target="admin-example">복사</button></div>
+          <pre><code id="admin-example">curl -X POST \
+  -H 'X-Admin-API-Key: &lt;ADMIN_API_KEY&gt;' \
+  '<span data-base-url>http://localhost:8080</span>/api/v1/admin/sync/SEOUL_OPEN_DATA_FULL_TIMETABLE'</code></pre>
+        </div>
+      </section>
+
+      <section class="doc-section" id="errors">
+        <div class="section-title"><span>12</span><div><p>ERROR HANDLING</p><h2>상태 코드와 오류</h2></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>HTTP</th><th>상황</th><th>응답</th></tr></thead>
+            <tbody>
+              <tr><td><code>200</code></td><td>조회 성공</td><td>요청한 JSON 데이터</td></tr>
+              <tr><td><code>202</code></td><td>동기화 작업 등록</td><td>등록된 작업 정보</td></tr>
+              <tr><td><code>401</code></td><td>관리 키 누락 또는 불일치</td><td>FastAPI <code>detail</code></td></tr>
+              <tr><td><code>400</code></td><td><code>pointSearch</code> 미지원 옵션</td><td>ODsay 호환 오류 <code>error.code=-8</code></td></tr>
+              <tr><td><code>404</code></td><td>경로 또는 리소스 없음</td><td>ODsay 호환 경로는 <code>error.code=-99</code></td></tr>
+              <tr><td><code>422</code></td><td>필수값 누락, 범위·형식 오류</td><td>필드별 검증 오류 목록</td></tr>
+              <tr><td><code>503</code></td><td>DB 또는 관리 설정 사용 불가</td><td>FastAPI <code>detail</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-card compact">
+          <div class="code-head"><span>400 · pointSearch 미지원 옵션</span><button type="button" class="copy-button" data-copy-target="unsupported-option-error">복사</button></div>
+          <pre><code id="unsupported-option-error">{
+  "error": {
+    "code": "-8",
+    "message": "현재 stationClass=2, lang=0, output=json만 지원합니다."
+  }
+}</code></pre>
+        </div>
+        <div class="code-card compact">
+          <div class="code-head"><span>404 · 검색 결과 없음</span><button type="button" class="copy-button" data-copy-target="error-example">복사</button></div>
+          <pre><code id="error-example">{
+  "error": {
+    "code": "-99",
+    "message": "검색결과가 없습니다."
+  }
+}</code></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="docs-footer">
+    <p><b>METRO TRANSIT API</b> · Asia/Seoul · JSON only</p>
+    <p>정적 시간표 기반 결과는 실제 당일 운행과 차이가 날 수 있습니다.</p>
+  </footer>
+  <div class="copy-toast" id="copy-toast" role="status" aria-live="polite">복사했습니다.</div>
+</body>
+</html>

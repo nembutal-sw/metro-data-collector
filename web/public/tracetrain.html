@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="수도권 도시철도 시간표, 노선, 운행 상태와 데이터 수집 현황을 확인하는 운영 대시보드">
+  <title>Trace Train — 수도권 도시철도 데이터</title>
+  <link rel="stylesheet" href="/styles.css?v=20260823-public-key">
+  <script src="/app.js?v=20260823-public-key" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="Metro Data Grid 홈">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span><b>METRO</b><small>DATA GRID</small></span>
+    </a>
+    <nav aria-label="주요 메뉴">
+      <a href="#coverage">수집원</a>
+      <a href="#lines">노선</a>
+      <a href="#stations">역 검색</a>
+      <a href="#operations">운영</a>
+    </nav>
+    <div class="system-state" id="system-state"><span></span>연결 확인 중</div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="overview">
+      <div class="hero-copy">
+        <p class="eyebrow">SEOUL METROPOLITAN TRANSIT / 2026</p>
+        <h1>수도권 철도 데이터를<br><em>한곳에서, 버전별로.</em></h1>
+        <p class="lead">정적 시간표부터 실시간 운행 알림까지. 공식 출처를 추적하고 검증된 데이터만 활성화합니다.</p>
+        <div class="hero-actions">
+          <a class="primary-button" href="#coverage">수집 현황 보기</a>
+          <a class="text-button" href="/docs" target="_blank" rel="noreferrer">API 문서 열기 <span>↗</span></a>
+        </div>
+      </div>
+      <div class="network-card" aria-label="데이터 처리 흐름">
+        <div class="scan-line"></div>
+        <div class="node node-source"><span>01</span><b>공식 원천</b><small>API · CSV · WEB</small></div>
+        <div class="node node-verify"><span>02</span><b>품질 검증</b><small>VERSION GATE</small></div>
+        <div class="node node-route"><span>03</span><b>경로 계산</b><small>LAST TRAIN CSA</small></div>
+        <div class="track track-a"></div>
+        <div class="track track-b"></div>
+        <div class="pulse pulse-a"></div>
+        <div class="pulse pulse-b"></div>
+        <p>수집 실패 시 현재 활성 시간표를 유지합니다.</p>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="데이터 요약">
+      <article><span>운영 노선</span><strong id="metric-lines">—</strong><small>수도권 여객 서비스</small></article>
+      <article><span>등록 역</span><strong id="metric-stations">—</strong><small>노선별 승강장 통합</small></article>
+      <article><span>공식 수집원</span><strong id="metric-sources">—</strong><small id="metric-enabled">활성 상태 확인 중</small></article>
+      <article><span>최근 동기화</span><strong class="metric-word" id="metric-sync">대기</strong><small id="metric-sync-detail">작업 기록 없음</small></article>
+    </section>
+
+    <section class="content-section" id="coverage">
+      <div class="section-heading">
+        <div><p class="eyebrow">SOURCE COVERAGE</p><h2>공식 수집원 현황</h2></div>
+        <div class="legend"><span class="dot enabled"></span>활성 <span class="dot pending"></span>준비 <span class="dot disabled"></span>차단</div>
+      </div>
+      <div class="table-shell">
+        <table>
+          <thead><tr><th>수집원</th><th>종류</th><th>확보 범위</th><th>접근 상태</th><th>이용조건</th></tr></thead>
+          <tbody id="coverage-body"><tr><td colspan="5" class="loading-cell">수집원 정보를 불러오는 중입니다.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="content-section" id="lines">
+      <div class="section-heading">
+        <div><p class="eyebrow">SERVICE MAP</p><h2>운영 노선</h2></div>
+        <p class="section-note">사업시행자와 관리운영자를 역할별로 관리합니다.</p>
+      </div>
+      <div class="line-grid" id="line-grid"><p class="empty-state">노선 정보를 불러오는 중입니다.</p></div>
+    </section>
+
+    <section class="content-section search-section" id="stations">
+      <div class="section-heading">
+        <div><p class="eyebrow">STATION INDEX</p><h2>역 검색</h2></div>
+      </div>
+      <form class="station-search" id="station-search">
+        <label for="station-query">역 이름</label>
+        <div><input id="station-query" name="q" type="search" placeholder="예: 서울역, 왕십리, 부평" autocomplete="off"><button type="submit">검색</button></div>
+      </form>
+      <div class="station-results" id="station-results"><p class="empty-state">역 이름을 입력하면 노선과 역 코드를 확인할 수 있습니다.</p></div>
+      <div class="travel-planner">
+        <div class="travel-copy">
+          <p class="eyebrow">TRAVEL TIME</p>
+          <h3>시간표 기반 빠른 경로</h3>
+          <p>출발 시각, 환승 보행시간과 다음 열차 대기까지 합산합니다.</p>
+        </div>
+        <form id="travel-time-form" class="travel-time-form">
+          <div class="route-station-field origin-field">
+            <label for="origin-station">출발역</label>
+            <input id="origin-station" name="origin" type="text" placeholder="한 글자부터 검색" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="origin-suggestions" aria-expanded="false" required>
+            <div class="station-suggestions" id="origin-suggestions" role="listbox" aria-label="출발역 검색 결과" hidden></div>
+          </div>
+          <span class="travel-arrow" aria-hidden="true">→</span>
+          <div class="route-station-field destination-field">
+            <label for="destination-station">도착역</label>
+            <input id="destination-station" name="destination" type="text" placeholder="한 글자부터 검색" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="destination-suggestions" aria-expanded="false" required>
+            <div class="station-suggestions" id="destination-suggestions" role="listbox" aria-label="도착역 검색 결과" hidden></div>
+          </div>
+          <div class="travel-options">
+            <label for="route-api-key">API 키<input id="route-api-key" name="api_key" type="password" placeholder="metro_live_…" autocomplete="off" required></label>
+            <label for="departure-at">출발 일시<input id="departure-at" name="departure_at" type="datetime-local" required></label>
+            <label for="walking-mode">환승 이동 기준<select id="walking-mode" name="walking_mode"><option value="standard">보통 걸음</option><option value="slow">느린 걸음</option><option value="accessible">엘리베이터 우선</option></select></label>
+            <label for="transfer-buffer">환승 여유(초)<input id="transfer-buffer" name="transfer_buffer" type="number" value="30" min="0" max="600" step="10"></label>
+          </div>
+          <button type="submit">시간표 경로 찾기</button>
+        </form>
+        <div id="travel-time-result" class="travel-time-result" aria-live="polite">
+          <p class="empty-state">출발역과 도착역을 입력해 주세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section" id="operations">
+      <div class="section-heading">
+        <div><p class="eyebrow">OPERATIONS</p><h2>동기화와 운행 알림</h2></div>
+        <button class="quiet-button" id="refresh-button" type="button">새로고침</button>
+      </div>
+      <div class="operations-grid">
+        <article class="panel"><h3>최근 동기화 작업</h3><div id="jobs-list"><p class="empty-state">작업 기록을 불러오는 중입니다.</p></div></article>
+        <article class="panel"><h3>현재 운행 알림</h3><div id="alerts-list"><p class="empty-state">알림을 불러오는 중입니다.</p></div></article>
+        <article class="panel"><h3>오늘의 API 호출 예산</h3><div id="api-usage-list"><p class="empty-state">호출량을 불러오는 중입니다.</p></div></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="brand footer-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span><b>METRO</b><small>DATA GRID</small></span></div>
+    <p>Asia/Seoul · 공식 출처 우선 · 활성 버전 보존</p>
+    <p id="updated-at">마지막 화면 갱신 —</p>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

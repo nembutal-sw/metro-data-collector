@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metro-data-collector"
+version = "0.1.0"
+description = "Versioned metropolitan railway timetable collection and routing platform"
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "alembic>=1.16,<2",
+    "fastapi>=0.116,<1",
+    "httpx>=0.28,<1",
+    "lxml>=5.4,<7",
+    "numpy>=2.2,<3",
+    "openpyxl>=3.1,<4",
+    "pillow>=11.3,<13",
+    "psycopg[binary,pool]>=3.2,<4",
+    "pydantic-settings>=2.10,<3",
+    "structlog>=25.4,<26",
+    "tenacity>=9.1,<10",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.16,<2",
+    "pytest>=8.4,<9",
+    "pytest-asyncio>=1.0,<2",
+    "respx>=0.22,<1",
+    "ruff>=0.12,<1",
+]
+
+[project.scripts]
+metro-api = "metro_collector.api.app:run"
+metro-sync = "metro_collector.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"migrations/**/*.py" = ["E501"]
+"src/metro_collector/api/**/*.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["metro_collector"]
